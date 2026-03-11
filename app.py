@@ -8,7 +8,7 @@ import io
 import datetime
 import os
 from openpyxl import Workbook
-from sqlalchemy import or_   # ✅ Added for multi-field search
+from sqlalchemy import or_
 from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
@@ -33,15 +33,18 @@ login_manager.init_app(app)
 login_manager.login_view = "login"
 login_manager.login_message = None
 
+
 # ---------------- USER MODEL ----------------
 class User(UserMixin, db.Model):
     id = db.Column(db.Integer, primary_key=True)
     name = db.Column(db.String(100))
     uid = db.Column(db.String(50))
 
+
 @login_manager.user_loader
 def load_user(user_id):
     return User.query.get(int(user_id))
+
 
 # ---------------- DOCUMENT MODEL ----------------
 class Document(db.Model):
@@ -52,8 +55,10 @@ class Document(db.Model):
     doc_type = db.Column(db.String(50))
     signer1 = db.Column(db.String(100))
     signer2 = db.Column(db.String(100))
-    created_at = db.Column(db.DateTime, default=lambda: datetime.datetime.now())  # ✅ fixed time
+    pdf_data = db.Column(db.LargeBinary)
+    created_at = db.Column(db.DateTime, default=datetime.datetime.utcnow)
     completed_at = db.Column(db.DateTime, nullable=True)
+
 
 # ---------------- LOGIN ----------------
 @app.route('/login', methods=['GET', 'POST'])
@@ -74,16 +79,19 @@ def login():
 
     return render_template("login.html")
 
+
 @app.route('/logout')
 @login_required
 def logout():
     logout_user()
     return redirect('/login')
 
+
 # ---------------- HOME ----------------
 @app.route('/')
 def root():
     return redirect('/login')
+
 
 @app.route('/home', methods=['GET', 'POST'])
 @login_required
@@ -114,13 +122,12 @@ def home():
             if not os.path.exists(template_path):
                 return f"Missing {template_file}"
 
-            # Coordinates (unchanged from your provided version)
             if action == "qo1":
                 x, y = 90, 505
             elif action == "po1":
                 x, y = 110, 270
 
-            signed_path = sign_pdf(
+            filename, pdf_data = sign_pdf(
                 template_path,
                 current_user.name,
                 current_user.uid,
@@ -132,17 +139,23 @@ def home():
             )
 
             doc = Document(
-                filename=os.path.basename(signed_path),
+                filename=filename,
                 reference=reference,
                 status=f"Awaiting {prefix} 2nd Sign",
                 doc_type=prefix,
-                signer1=current_user.name
+                signer1=current_user.name,
+                pdf_data=pdf_data
             )
 
             db.session.add(doc)
             db.session.commit()
 
-            return send_file(signed_path, as_attachment=True)
+            return send_file(
+                io.BytesIO(pdf_data),
+                download_name=filename,
+                as_attachment=True,
+                mimetype="application/pdf"
+            )
 
         elif action == "anfo1":
 
@@ -171,6 +184,7 @@ def home():
 
     return render_template("index.html", user=current_user)
 
+
 # ---------------- DASHBOARD ----------------
 @app.route('/dashboard')
 @login_required
@@ -178,12 +192,11 @@ def dashboard():
 
     filter_type = request.args.get("filter", "open")
     search_query = request.args.get("search", "").strip()
-    now = datetime.datetime.now()  # ✅ local time
+    now = datetime.datetime.now()
     two_min_ago = now - datetime.timedelta(minutes=2)
 
     query = Document.query
 
-    # ✅ SEARCH BY reference OR creator OR 2nd signer
     if search_query:
         query = query.filter(
             or_(
@@ -228,126 +241,6 @@ def dashboard():
         search_query=search_query
     )
 
-# ---------------- KPI ----------------
-@app.route('/kpi')
-@login_required
-def kpi():
-
-    period = request.args.get("period", "all")
-    today = datetime.datetime.now()  # ✅ local time
-
-    query = Document.query
-
-    if period == "today":
-        start = today.replace(hour=0, minute=0, second=0)
-        query = query.filter(Document.created_at >= start)
-
-    elif period == "week":
-        start = today - datetime.timedelta(days=7)
-        query = query.filter(Document.created_at >= start)
-
-    elif period == "month":
-        start = today - datetime.timedelta(days=30)
-        query = query.filter(Document.created_at >= start)
-
-    elif period == "quarter":
-        start = today - datetime.timedelta(days=90)
-        query = query.filter(Document.created_at >= start)
-
-    elif period == "half":
-        start = today - datetime.timedelta(days=180)
-        query = query.filter(Document.created_at >= start)
-
-    elif period == "year":
-        start = today - datetime.timedelta(days=365)
-        query = query.filter(Document.created_at >= start)
-
-    docs = query.all()
-
-    total_cases = len(docs)
-    completed_cases = len([d for d in docs if d.completed_at])
-    open_cases = total_cases - completed_cases
-
-    total_minutes = 0
-    for d in docs:
-        if d.completed_at:
-            total_minutes += (d.completed_at - d.created_at).total_seconds() / 60
-
-    avg_time = round(total_minutes / completed_cases, 2) if completed_cases else 0
-
-    qo_total = len([d for d in docs if d.doc_type == "QO"])
-    po_total = len([d for d in docs if d.doc_type == "PO"])
-    anfo_total = len([d for d in docs if d.doc_type == "ANFO"])
-
-    users = User.query.all()
-    user_stats = []
-
-    for user in users:
-        docs_1st = [d for d in docs if d.signer1 == user.name]
-        docs_2nd = [d for d in docs if d.signer2 == user.name]
-
-        stats = {
-            "name": user.name,
-            "qo_1st": len([d for d in docs_1st if d.doc_type == "QO"]),
-            "qo_2nd": len([d for d in docs_2nd if d.doc_type == "QO"]),
-            "po_1st": len([d for d in docs_1st if d.doc_type == "PO"]),
-            "po_2nd": len([d for d in docs_2nd if d.doc_type == "PO"]),
-            "anfo_1st": len([d for d in docs_1st if d.doc_type == "ANFO"]),
-            "anfo_2nd": len([d for d in docs_2nd if d.doc_type == "ANFO"]),
-            "total_1st": len(docs_1st),
-            "total_2nd": len(docs_2nd),
-        }
-
-        stats["overall"] = stats["total_1st"] + stats["total_2nd"]
-        user_stats.append(stats)
-
-    return render_template("kpi.html",
-                           total_cases=total_cases,
-                           completed_cases=completed_cases,
-                           open_cases=open_cases,
-                           avg_time=avg_time,
-                           qo_total=qo_total,
-                           po_total=po_total,
-                           anfo_total=anfo_total,
-                           user_stats=user_stats,
-                           period=period)
-
-# ---------------- EXPORT ----------------
-@app.route('/export')
-@login_required
-def export_excel():
-
-    docs = Document.query.all()
-
-    wb = Workbook()
-    ws = wb.active
-    ws.title = "Detailed Cases"
-
-    ws.append([
-        "Reference","Type","Status","1st Signer","2nd Signer",
-        "Created","Completed","Turnaround (Min)"
-    ])
-
-    for d in docs:
-        turnaround = ""
-        if d.completed_at:
-            turnaround = round((d.completed_at - d.created_at).total_seconds() / 60, 2)
-
-        ws.append([
-            d.reference,
-            d.doc_type,
-            d.status,
-            d.signer1,
-            d.signer2,
-            d.created_at.strftime('%d-%b-%Y %H:%M'),
-            d.completed_at.strftime('%d-%b-%Y %H:%M') if d.completed_at else "",
-            turnaround
-        ])
-
-    file_path = "enterprise_report.xlsx"
-    wb.save(file_path)
-
-    return send_file(file_path, as_attachment=True)
 
 # ---------------- DELETE DOCUMENT ----------------
 @app.route('/delete/<int:doc_id>')
@@ -358,7 +251,6 @@ def delete_document(doc_id):
 
     if document:
 
-        # Optional: remove file from uploads folder
         filepath = os.path.join(UPLOAD_FOLDER, document.filename)
         if os.path.exists(filepath):
             os.remove(filepath)
@@ -367,6 +259,7 @@ def delete_document(doc_id):
         db.session.commit()
 
     return redirect('/dashboard')
+
 
 # ---------------- SIGN SECOND ----------------
 @app.route('/sign/<int:doc_id>')
@@ -377,7 +270,7 @@ def sign_second(doc_id):
 
     if document and "Awaiting" in document.status:
 
-        filepath = os.path.join(UPLOAD_FOLDER, document.filename)
+        pdf_stream = io.BytesIO(document.pdf_data)
 
         if document.doc_type == "QO":
             x, y = 399, 505
@@ -386,8 +279,8 @@ def sign_second(doc_id):
         else:
             x, y = 399, 230
 
-        signed_path = sign_pdf(
-            filepath,
+        filename, pdf_data = sign_pdf(
+            pdf_stream,
             current_user.name,
             current_user.uid,
             document.reference,
@@ -399,14 +292,21 @@ def sign_second(doc_id):
 
         document.status = "Completed"
         document.signer2 = current_user.name
-        document.filename = os.path.basename(signed_path)
-        document.completed_at = datetime.datetime.now()  # ✅ fixed time
+        document.filename = filename
+        document.pdf_data = pdf_data
+        document.completed_at = datetime.datetime.now()
 
         db.session.commit()
 
-        return send_file(signed_path, as_attachment=True)
+        return send_file(
+            io.BytesIO(pdf_data),
+            download_name=filename,
+            as_attachment=True,
+            mimetype="application/pdf"
+        )
 
     return redirect('/dashboard')
+
 
 # ---------------- SIGN FUNCTION ----------------
 def sign_pdf(filepath, name, uid, reference, x, y, prefix, stage):
@@ -426,7 +326,11 @@ def sign_pdf(filepath, name, uid, reference, x, y, prefix, stage):
     packet.seek(0)
 
     overlay_pdf = PdfReader(packet)
-    original_pdf = PdfReader(filepath)
+
+    if isinstance(filepath, io.BytesIO):
+        original_pdf = PdfReader(filepath)
+    else:
+        original_pdf = PdfReader(filepath)
 
     writer = PdfWriter()
     page = original_pdf.pages[0]
@@ -434,12 +338,13 @@ def sign_pdf(filepath, name, uid, reference, x, y, prefix, stage):
     writer.add_page(page)
 
     filename = f"{prefix} {reference} - {stage}.pdf"
-    signed_path = os.path.join(UPLOAD_FOLDER, filename)
 
-    with open(signed_path, "wb") as f:
-        writer.write(f)
+    pdf_bytes = io.BytesIO()
+    writer.write(pdf_bytes)
+    pdf_bytes.seek(0)
 
-    return signed_path
+    return filename, pdf_bytes.read()
+
 
 # Ensure database tables exist
 with app.app_context():
