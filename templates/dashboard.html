@@ -1,0 +1,190 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Signing Dashboard</title>
+    <style>
+        body {
+            font-family: Arial, sans-serif;
+            background-color: #f4f6f9;
+            margin: 0;
+            padding: 30px;
+        }
+
+        h2 {
+            margin-bottom: 10px;
+        }
+
+        .badge {
+            background: #dc3545;
+            color: white;
+            padding: 4px 10px;
+            border-radius: 20px;
+            font-size: 14px;
+            margin-left: 10px;
+        }
+
+        .top-buttons a {
+            text-decoration: none;
+            padding: 8px 14px;
+            border-radius: 6px;
+            margin-right: 6px;
+            font-size: 14px;
+            color: white;
+        }
+
+        .btn-blue { background: #007bff; }
+        .btn-green { background: #28a745; }
+        .btn-purple { background: #6f42c1; }
+        .btn-orange { background: #fd7e14; }
+        .btn-dark { background: #343a40; }
+        .btn-gray { background: #6c757d; }
+        .btn-red { background: #dc3545; }
+
+        .search-box {
+            margin: 20px 0;
+        }
+
+        input[type="text"] {
+            padding: 8px;
+            width: 250px;
+            border-radius: 6px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            padding: 8px 14px;
+            border-radius: 6px;
+            border: none;
+            cursor: pointer;
+            color: white;
+        }
+
+        .case-card {
+            background: white;
+            padding: 20px;
+            border-radius: 10px;
+            margin-bottom: 20px;
+            box-shadow: 0 3px 8px rgba(0,0,0,0.08);
+        }
+
+        .case-card.open { border-left: 6px solid orange; }
+        .case-card.completed { border-left: 6px solid green; }
+
+        .case-title {
+            font-weight: bold;
+            font-size: 16px;
+            margin-bottom: 8px;
+        }
+
+        .info-line {
+            font-size: 14px;
+            margin-bottom: 3px;
+        }
+
+        .actions {
+            margin-top: 12px;
+        }
+
+        .actions a {
+            text-decoration: none;
+            padding: 6px 12px;
+            border-radius: 6px;
+            margin-right: 6px;
+            font-size: 13px;
+            color: white;
+        }
+    </style>
+</head>
+<body>
+
+<h2>
+    📋 Signing Dashboard
+    <span class="badge">Pending: {{ pending_count }}</span>
+</h2>
+
+<div class="top-buttons">
+    <a href="/" class="btn-gray">← Back</a>
+    <a href="/dashboard?filter=open" class="btn-blue">Open</a>
+    <a href="/dashboard?filter=completed" class="btn-green">Completed</a>
+    <a href="/dashboard?filter=qo" class="btn-blue">QO</a>
+    <a href="/dashboard?filter=po" class="btn-purple">PO</a>
+    <a href="/dashboard?filter=anfo" class="btn-orange">ANFO</a>
+    <a href="/kpi" class="btn-green">KPI</a>
+    <a href="/export" class="btn-purple">Export</a>
+    <a href="/logout" class="btn-dark">Logout</a>
+</div>
+
+<div class="search-box">
+    <form method="get" action="/dashboard">
+        <input type="text" name="search" placeholder="Search by Reference or User"
+               value="{{ search_query }}">
+        <button type="submit" class="btn-blue">Search</button>
+    </form>
+</div>
+
+<hr>
+
+{% if documents %}
+    {% for doc in documents %}
+        <div class="case-card {% if doc.completed_at %}completed{% else %}open{% endif %}">
+
+            <div class="case-title">
+                {{ doc.filename }}
+            </div>
+
+            <div class="info-line">
+                Type: {{ doc.doc_type }} |
+                Reference: {{ doc.reference }}
+            </div>
+
+            <div class="info-line">
+                Created: {{ doc.created_at.strftime('%d-%b-%Y %H:%M') }}
+            </div>
+
+            {% if doc.completed_at %}
+            <div class="info-line">
+                Completed: {{ doc.completed_at.strftime('%d-%b-%Y %H:%M') }}
+            </div>
+            {% endif %}
+
+            <div class="info-line">
+                <strong>Status:</strong> {{ doc.status }}
+            </div>
+
+            <div class="info-line">
+                <strong>1st Signer:</strong> {{ doc.signer1 }}
+            </div>
+
+            <div class="info-line">
+                <strong>2nd Signer:</strong>
+                {% if doc.signer2 %}
+                    {{ doc.signer2 }}
+                {% else %}
+                    Pending
+                {% endif %}
+            </div>
+
+            <div class="actions">
+
+                {% if "Awaiting" in doc.status %}
+                    <a href="/sign/{{ doc.id }}" class="btn-blue">
+                        Apply 2nd Sign
+                    </a>
+                {% endif %}
+
+                <a href="/delete/{{ doc.id }}"
+                   class="btn-red"
+                   onclick="return confirm('Are you sure you want to delete this case?');">
+                   Delete
+                </a>
+
+            </div>
+
+        </div>
+    {% endfor %}
+{% else %}
+    <p>No cases found.</p>
+{% endif %}
+
+</body>
+</html>

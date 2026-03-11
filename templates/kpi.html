@@ -1,0 +1,127 @@
+<!DOCTYPE html>
+<html>
+<head>
+<title>Enterprise KPI Dashboard</title>
+
+<script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+
+<style>
+body { font-family:Segoe UI; background:#f4f6f9; margin:40px; }
+button { padding:6px 12px; border:none; border-radius:6px; cursor:pointer; font-size:12px; margin-right:6px;}
+.gray{background:#546e7a;color:white;}
+.primary{background:#1976d2;color:white;}
+.card-container{display:flex;gap:20px;flex-wrap:wrap;margin-bottom:30px;}
+.card{background:white;padding:20px;border-radius:10px;width:200px;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+.card h3{margin:0;}
+table{width:100%;border-collapse:collapse;background:white;margin-top:20px;}
+th,td{padding:8px;border-bottom:1px solid #eee;font-size:12px;}
+th{background:#f0f0f0;}
+.chart-container{background:white;padding:20px;border-radius:10px;margin-top:30px;box-shadow:0 4px 10px rgba(0,0,0,0.05);}
+</style>
+</head>
+
+<body>
+
+<h2>📊 Enterprise KPI Dashboard</h2>
+
+<a href="/dashboard"><button class="gray">⬅ Back</button></a>
+<a href="/logout"><button class="gray">Logout</button></a>
+
+<br><br>
+
+<form method="GET">
+<select name="period">
+<option value="all">All</option>
+<option value="today">Today</option>
+<option value="week">Week</option>
+<option value="month">Month</option>
+<option value="quarter">Quarter</option>
+<option value="half">Half Year</option>
+<option value="year">Year</option>
+</select>
+<button class="primary">Apply</button>
+</form>
+
+<hr>
+
+<div class="card-container">
+<div class="card"><h3>{{ total_cases }}</h3>Total Cases</div>
+<div class="card"><h3>{{ completed_cases }}</h3>Completed</div>
+<div class="card"><h3>{{ open_cases }}</h3>Open</div>
+<div class="card"><h3>{{ avg_time }}</h3>Avg TAT (Min)</div>
+<div class="card"><h3>{{ qo_total }}</h3>QO Total</div>
+<div class="card"><h3>{{ po_total }}</h3>PO Total</div>
+<div class="card"><h3>{{ anfo_total }}</h3>ANFO Total</div>
+</div>
+
+<hr>
+
+<h3>📊 Document Type Distribution</h3>
+
+<div class="chart-container">
+<canvas id="typeChart"></canvas>
+</div>
+
+<hr>
+
+<h3>👤 Detailed User Performance</h3>
+
+<table>
+<tr>
+<th>User</th>
+<th>QO 1st</th>
+<th>QO 2nd</th>
+<th>PO 1st</th>
+<th>PO 2nd</th>
+<th>ANFO 1st</th>
+<th>ANFO 2nd</th>
+<th>Total 1st</th>
+<th>Total 2nd</th>
+<th>Overall</th>
+</tr>
+
+{% for u in user_stats %}
+<tr>
+<td>{{ u.name }}</td>
+<td>{{ u.qo_1st }}</td>
+<td>{{ u.qo_2nd }}</td>
+<td>{{ u.po_1st }}</td>
+<td>{{ u.po_2nd }}</td>
+<td>{{ u.anfo_1st }}</td>
+<td>{{ u.anfo_2nd }}</td>
+<td>{{ u.total_1st }}</td>
+<td>{{ u.total_2nd }}</td>
+<td><b>{{ u.overall }}</b></td>
+</tr>
+{% endfor %}
+
+</table>
+
+<script>
+const ctx = document.getElementById('typeChart');
+
+new Chart(ctx, {
+    type: 'bar',
+    data: {
+        labels: ['QO', 'PO', 'ANFO'],
+        datasets: [{
+            label: 'Cases',
+            data: [{{ qo_total }}, {{ po_total }}, {{ anfo_total }}],
+            backgroundColor: [
+                '#1976d2',
+                '#2e7d32',
+                '#6a1b9a'
+            ]
+        }]
+    },
+    options: {
+        responsive: true,
+        plugins: {
+            legend: { display: false }
+        }
+    }
+});
+</script>
+
+</body>
+</html>

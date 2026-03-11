@@ -1,0 +1,149 @@
+<!DOCTYPE html>
+<html>
+<head>
+    <title>Document Signing Portal</title>
+
+    <style>
+        body {
+            font-family: 'Segoe UI', Arial;
+            background: #f4f6f9;
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            height: 100vh;
+        }
+
+        .container {
+            background: white;
+            padding: 40px;
+            width: 450px;
+            border-radius: 12px;
+            box-shadow: 0px 6px 18px rgba(0,0,0,0.08);
+        }
+
+        h2 {
+            text-align: center;
+            margin-bottom: 10px;
+        }
+
+        .user {
+            text-align: center;
+            font-size: 13px;
+            color: #555;
+            margin-bottom: 25px;
+        }
+
+        input[type="text"],
+        input[type="file"] {
+            width: 100%;
+            padding: 10px;
+            margin-bottom: 12px;
+            border-radius: 8px;
+            border: 1px solid #ccc;
+        }
+
+        button {
+            width: 100%;
+            padding: 10px;
+            border-radius: 8px;
+            border: none;
+            font-size: 14px;
+            cursor: pointer;
+            margin-bottom: 10px;
+        }
+
+        .qo-btn {
+            background: #1976d2;
+            color: white;
+        }
+
+        .po-btn {
+            background: #6a1b9a;
+            color: white;
+        }
+
+        .anfo-btn {
+            background: #ff9800;
+            color: white;
+        }
+
+        .dashboard-btn {
+            background: #2e7d32;
+            color: white;
+        }
+
+        hr {
+            margin: 20px 0;
+            opacity: 0.2;
+        }
+    </style>
+</head>
+
+<body>
+
+<div class="container">
+
+    <h2>✍ Document Signing</h2>
+    <div class="user">
+        Logged in as <b>{{ user.name }}</b>
+    </div>
+
+<div style="text-align:right; margin-bottom:10px;">
+    <a href="/logout">
+        <button style="
+            background:#c62828;
+            color:white;
+            padding:6px 12px;
+            border:none;
+            border-radius:6px;
+            cursor:pointer;
+            font-size:12px;">
+            Logout
+        </button>
+    </a>
+</div>
+
+    <!-- QO & PO SECTION -->
+    <form method="POST">
+
+        <input type="text" name="reference"
+               placeholder="Enter Reference Number"
+               required>
+
+        <button type="submit" name="action" value="qo1" class="qo-btn">
+            QO 1st Sign
+        </button>
+
+        <button type="submit" name="action" value="po1" class="po-btn">
+            PO 1st Sign
+        </button>
+
+    </form>
+
+    <hr>
+
+    <!-- ANFO SECTION -->
+    <form method="POST" enctype="multipart/form-data">
+
+        <input type="text" name="reference"
+               placeholder="Enter MR Reference"
+               required>
+
+        <input type="file" name="pdf" required>
+
+        <button type="submit" name="action" value="anfo1" class="anfo-btn">
+            ANFO 1st Sign
+        </button>
+
+    </form>
+
+    <hr>
+
+    <a href="/dashboard">
+        <button class="dashboard-btn">Go to Dashboard</button>
+    </a>
+
+</div>
+
+</body>
+</html>
