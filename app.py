@@ -73,7 +73,11 @@ def logout():
     return redirect('/login')
 
 # ---------------- HOME ----------------
-@app.route('/', methods=['GET', 'POST'])
+@app.route('/')
+def root():
+    return redirect('/login')
+
+@app.route('/home', methods=['GET', 'POST'])
 @login_required
 def home():
 
