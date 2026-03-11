@@ -10,8 +10,12 @@ import os
 from openpyxl import Workbook
 from sqlalchemy import or_   # ✅ Added for multi-field search
 
-app = Flask(__name__)
-app.secret_key = "supersecretkey"
+import os
+
+app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey")
+
+app.config['SESSION_COOKIE_SECURE'] = True
+app.config['SESSION_COOKIE_SAMESITE'] = "None"
 
 UPLOAD_FOLDER = "uploads"
 TEMPLATE_FOLDER = "templates_docs"
