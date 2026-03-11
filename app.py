@@ -23,7 +23,7 @@ app.config["SESSION_COOKIE_HTTPONLY"] = True
 UPLOAD_FOLDER = "uploads"
 TEMPLATE_FOLDER = "templates_docs"
 
-app.config['SQLALCHEMY_DATABASE_URI'] = 'sqlite:///documents.db'
+app.config['SQLALCHEMY_DATABASE_URI'] = os.environ.get("DATABASE_URL", "sqlite:///documents.db")
 db = SQLAlchemy(app)
 
 socketio = SocketIO(app, async_mode="threading")
