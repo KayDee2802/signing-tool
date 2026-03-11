@@ -27,6 +27,7 @@ socketio = SocketIO(app, async_mode="threading")
 login_manager = LoginManager()
 login_manager.init_app(app)
 login_manager.login_view = "login"
+login_manager.login_message = None
 
 # ---------------- USER MODEL ----------------
 class User(UserMixin, db.Model):
@@ -65,7 +66,7 @@ def login():
             db.session.commit()
 
         login_user(user, remember=remember)
-        return redirect('/')
+        return redirect('/home')
 
     return render_template("login.html")
 
