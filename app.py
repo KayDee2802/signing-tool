@@ -9,12 +9,16 @@ import datetime
 import os
 from openpyxl import Workbook
 from sqlalchemy import or_   # ✅ Added for multi-field search
+from werkzeug.middleware.proxy_fix import ProxyFix
 
 app = Flask(__name__)
+app.wsgi_app = ProxyFix(app.wsgi_app, x_proto=1, x_host=1)
+
 app.secret_key = os.environ.get("SECRET_KEY", "supersecretkey")
 
-app.config["SESSION_COOKIE_SECURE"] = False
-app.config["SESSION_COOKIE_SAMESITE"] = "Lax"
+app.config["SESSION_COOKIE_SECURE"] = True
+app.config["SESSION_COOKIE_SAMESITE"] = "None"
+app.config["SESSION_COOKIE_HTTPONLY"] = True
 
 UPLOAD_FOLDER = "uploads"
 TEMPLATE_FOLDER = "templates_docs"
