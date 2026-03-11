@@ -348,6 +348,7 @@ def sign_pdf(filepath, name, uid, reference, x, y, prefix, stage):
 
 # Ensure database tables exist
 with app.app_context():
+    db.drop_all()
     db.create_all()
 
 
